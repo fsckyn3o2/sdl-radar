@@ -1,6 +1,5 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
-#include <math.h>
 #include "main_constants.h"
 #include "radar.h"
 
@@ -41,25 +40,28 @@ int main(void) {
 
     Radar radar = {
         .renderer=renderer,
+        .direction=-1, // Multiply by speed to get negative number or positive number, this direction parameter can use to speed up, reverse the rotation or stop the radar line.
         .angle=0.0,
         .destination= {0,0,0,0},
         .padding=100,
         .radius=RADAR_RADIUS,
         .with_grid=1,
         .speed=SWEEP_SPEED,
-        .color = {106, 220, 153, 255},
+        .color = {100, 255, 100, 255},
         .centerPoint = {10, 10},
         .sweepLineColor = {255, 255, 255, 255},
         .grid = {
-            .color = {106, 220, 153, 100},
+            .color = {100, 150, 100, 100},
             .cellSize = 40,
             .thinCellNumber = -1
         },
-        .max_trail_length = 80,
-        .trail_history_index = 0,
-        .trail_history = {0}
+        .max_trail_length = 40,
+        .trail_larger = RADAR_RADIUS,
+        .trailColor =  {106, 220, 153, 255},
+        .trail_history_index = 0
     };
 
+    radar_init(&radar);
     radar.destination = radar_rectangle_centered(&radar, CENTER_X, CENTER_Y);
 
     // Main loop

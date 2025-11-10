@@ -2,9 +2,6 @@
 #define RADAR_H
 #include <SDL2/SDL.h>
 
-// Maximum length the trail can ever be in the fixed-size C array
-#define MAX_TRAIL_CAPACITY 2000
-
 // Structure simple pour stocker les points de la traînée
 typedef struct {
     int x, y;
@@ -22,6 +19,7 @@ typedef struct {
 } RadarCenterPoint;
 
 typedef struct {
+    int direction;
     SDL_Rect destination;
     int radius;
     int padding;
@@ -34,15 +32,17 @@ typedef struct {
     RadarGrid grid;
     SDL_Renderer *renderer;
     SDL_Texture *renderTexture;
-
-    // NOUVEAU CHAMP : Historique des points de la traînée
-    RadarTrailPoint trail_history[MAX_TRAIL_CAPACITY];
+    SDL_Color trailColor;
     int trail_history_index;
-    int max_trail_length; // Pour contrôler la longueur de la traînée
+    int trail_larger;
+    int max_trail_length;
+    RadarTrailPoint **trail_history;
 } Radar;
 
+void radar_init(Radar *radar);
 void radar_render(Radar *radar);
 void radar_draw(Radar *radar);
+void radar_draw_middle_point(Radar *radar);
 void radar_draw_sweep_line(Radar *radar);
 void update_radar_trail(Radar* radar);
 void radar_draw_circles(const Radar *radar);

@@ -16,6 +16,8 @@ pkg_check_modules(SDL2 REQUIRED sdl2)
 pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
 pkg_check_modules(SDL2_IMAGE REQUIRED SDL2_image)
 pkg_check_modules(SDL2_GFX REQUIRED SDL2_gfx)
+pkg_check_modules(GLEW REQUIRED glew)
+
 # Find ALSA library
 pkg_check_modules(ALSA REQUIRED alsa)
 pkg_check_modules(fluidsynth REQUIRED)

@@ -7,6 +7,16 @@
 
 #define RADAR_CENTER(radar) (radar->padding + radar->radius)
 
+void radar_init(Radar *radar) {
+    radar->trail_history = (RadarTrailPoint**) malloc(sizeof(RadarTrailPoint*) * radar->trail_larger);
+    for (size_t i = radar->max_trail_length-1; i > 0; --i) {
+        for (size_t n = 0; n < radar->trail_larger; ++n) {
+            radar->trail_history[n] = (RadarTrailPoint*) malloc(sizeof(RadarTrailPoint) * radar->max_trail_length);
+            radar->trail_history[n][i] = (RadarTrailPoint){0,0};
+        }
+    }
+}
+
 void radar_render(Radar *radar) {
     if (radar->renderTexture != NULL) {
         SDL_SetRenderTarget(radar->renderer, NULL);
@@ -33,14 +43,24 @@ void radar_draw(Radar *radar) {
     radar_draw_circles(radar);
     radar_draw_sweep_line(radar);
     update_radar_trail(radar);
+    radar_draw_middle_point(radar);
 
     // Update angle
-    radar->angle += radar->speed;
+    radar->angle += radar->speed*radar->direction;
     if (radar->angle >= 360.0) {
         radar->angle = 0.0;
     }
 
     SDL_SetRenderTarget(radar->renderer, NULL);
+}
+
+void radar_draw_middle_point(Radar *radar) {
+    // Draw middle circle
+    RadarCenterPoint* cpz = &radar->centerPoint;
+    roundedBoxRGBA(radar->renderer,
+        RADAR_CENTER(radar)-cpz->radius,RADAR_CENTER(radar)-cpz->radius,
+        RADAR_CENTER(radar)+cpz->radius, RADAR_CENTER(radar)+cpz->radius,
+        cpz->corner, radar->sweepLineColor.r, radar->sweepLineColor.g, radar->sweepLineColor.b, radar->sweepLineColor.a);
 }
 
 void radar_draw_sweep_line(Radar *radar) {
@@ -58,47 +78,40 @@ void radar_draw_sweep_line(Radar *radar) {
     //                   RADAR_CENTER(radar)+7 + radar->radius * cos(rad),
     //                   RADAR_CENTER(radar) + radar->radius * sin(rad),
     //                   20, radar->sweepLineColor.r, radar->sweepLineColor.g, radar->sweepLineColor.b, radar->sweepLineColor.a/4);
-
-    // Draw middle circle
-    RadarCenterPoint* cpz = &radar->centerPoint;
-    roundedBoxRGBA(radar->renderer,
-        RADAR_CENTER(radar)-cpz->radius,RADAR_CENTER(radar)-cpz->radius,
-        RADAR_CENTER(radar)+cpz->radius, RADAR_CENTER(radar)+cpz->radius,
-        cpz->corner, radar->sweepLineColor.r, radar->sweepLineColor.g, radar->sweepLineColor.b, radar->sweepLineColor.a);
 }
 
 void update_radar_trail(Radar* radar) {
-
     for (size_t i = radar->max_trail_length-1; i > 0; --i) {
-        radar->trail_history[i] = radar->trail_history[i-1];
+        for (size_t n = 0; n < radar->trail_larger; ++n) {
+            radar->trail_history[n][i] = radar->trail_history[n][i-1];
+        }
     }
 
-    // Calculer la position actuelle de la pointe (conversion angle double en int x, y)
     double rad = radar->angle * M_PI / 180.0f;
-    int tipX = RADAR_CENTER(radar) + cos(rad) * radar->radius;
-    int tipY = RADAR_CENTER(radar) + sin(rad) * radar->radius;
-    radar->trail_history[0].x = tipX;
-    radar->trail_history[0].y = tipY;
+    for (size_t n = 0; n < radar->trail_larger; ++n) {
 
-    for (size_t i = 0; i+1 < (radar->max_trail_length-1); ++i) {
+        radar->trail_history[n][0].x = RADAR_CENTER(radar) + cos(rad) * (radar->radius-n);
+        radar->trail_history[n][0].y = RADAR_CENTER(radar) + sin(rad) * (radar->radius-n);
 
-        if (radar->trail_history[i+1].x == 0 || radar->trail_history[i+1].x == 0) {
-            break;
+        for (size_t i = 0; i+1 < (radar->max_trail_length-1); ++i) {
+
+            if (radar->trail_history[n][i+1].x == 0 || radar->trail_history[n][i+1].y == 0) {
+                break;
+            }
+
+            Uint8 alpha = (Uint8)(255.0f * (radar->max_trail_length - i) / radar->max_trail_length);
+
+            thickLineRGBA(radar->renderer,
+            radar->trail_history[n][i].x,
+            radar->trail_history[n][i].y,
+            radar->trail_history[n][i+1].x,
+            radar->trail_history[n][i+1].y,
+            1, radar->trailColor.r, radar->trailColor.g, radar->trailColor.b, alpha);
         }
-
-        Uint8 alpha = (Uint8)(255.0f * (radar->max_trail_length - i) / radar->max_trail_length);
-
-        thickLineRGBA(radar->renderer,
-        radar->trail_history[i].x,
-        radar->trail_history[i].y,
-        radar->trail_history[i+1].x,
-        radar->trail_history[i+1].y,
-        15, radar->sweepLineColor.r, radar->sweepLineColor.g, radar->sweepLineColor.b, alpha);
     }
 }
 
 void radar_draw_circles(const Radar *radar) {
-    // Draw radar circles
     SDL_SetRenderDrawColor(radar->renderer, radar->color.r, radar->color.g, radar->color.b, radar->color.a);
     int count=0;
     for (int r = radar->radius; r > 0; r -= 100) {
