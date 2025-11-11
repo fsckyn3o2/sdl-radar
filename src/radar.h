@@ -31,7 +31,8 @@ typedef struct {
     SDL_Color sweepLineColor;
     RadarGrid grid;
     SDL_Renderer *renderer;
-    SDL_Texture *renderTexture;
+    SDL_Texture *workingTexture;
+    SDL_Texture *renderedTexture;;
     SDL_Color trailColor;
     int trail_history_index;
     int trail_larger;
@@ -55,4 +56,5 @@ SDL_Rect radar_rectangle_centered(const Radar *radar, int x, int y);
 int radar_width(const Radar *radar);
 int radar_height(const Radar *radar);
 
+void radar_cleanup(Radar *radar);
 #endif

@@ -18,23 +18,25 @@ void radar_init(Radar *radar) {
 }
 
 void radar_render(Radar *radar) {
-    if (radar->renderTexture != NULL) {
-        SDL_SetRenderTarget(radar->renderer, NULL);
-        SDL_RenderCopy(radar->renderer, radar->renderTexture, NULL, &radar->destination);
+    SDL_SetRenderTarget(radar->renderer, NULL);
+    if (radar->renderedTexture != NULL) {
+        SDL_RenderCopy(radar->renderer, radar->renderedTexture, NULL, &radar->destination);
+    } else {
+        SDL_RenderCopy(radar->renderer, radar->workingTexture, NULL, &radar->destination);
     }
 }
 
 void radar_draw(Radar *radar) {
 
-    if (radar->renderTexture == NULL) {
-        radar->renderTexture = SDL_CreateTexture(
+    if (radar->workingTexture == NULL) {
+        radar->workingTexture = SDL_CreateTexture(
             radar->renderer,
             SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
             radar_width(radar), radar_height(radar)
         );
     }
 
-    SDL_SetRenderTarget(radar->renderer, radar->renderTexture);
+    SDL_SetRenderTarget(radar->renderer, radar->workingTexture);
     SDL_RenderClear(radar->renderer);
 
     if (radar->with_grid) {
@@ -174,4 +176,14 @@ SDL_Rect radar_rectangle(const Radar *radar, int x, int y) {
 
 SDL_Rect radar_rectangle_centered(const Radar *radar, int x, int y) {
     return (SDL_Rect){x-radar_width(radar)/2, y-radar_height(radar)/2, radar_width(radar), radar_height(radar)};
+}
+
+void radar_cleanup(Radar *radar) {
+    free(radar->trail_history);
+    SDL_DestroyTexture(radar->workingTexture);
+    radar->workingTexture = NULL;
+    SDL_DestroyTexture(radar->renderedTexture);
+    radar->renderedTexture = NULL;
+    SDL_DestroyRenderer(radar->renderer);
+    radar->renderer = NULL;
 }

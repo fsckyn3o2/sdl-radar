@@ -28,6 +28,8 @@ set(SOURCE_FILES
         src/main_constants.h
         src/radar.h
         src/radar.c
+        src/radar_sphere.h
+        src/radar_sphere.c
 )
 
 add_executable(radar ${SOURCE_FILES})

@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "main_constants.h"
 #include "radar.h"
+#include "radar_sphere.h"
 
 int main(void) {
     SDL_Window* window = NULL;
@@ -43,7 +44,7 @@ int main(void) {
         .direction=-1, // Multiply by speed to get negative number or positive number, this direction parameter can use to speed up, reverse the rotation or stop the radar line.
         .angle=0.0,
         .destination= {0,0,0,0},
-        .padding=100,
+        .padding=0,
         .radius=RADAR_RADIUS,
         .with_grid=1,
         .speed=SWEEP_SPEED,
@@ -65,11 +66,46 @@ int main(void) {
     radar.destination = radar_rectangle_centered(&radar, CENTER_X, CENTER_Y);
 
     // Main loop
+    float angle_y = 0.0f;
+    float angle_x = 0.0f;
+    float offset = 10.0f;
+    int mode = 0;
+
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = false;
+            } else if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_v || event.key.keysym.sym == SDLK_r) {
+                    mode = mode?0:1;
+                    SDL_DestroyTexture(radar.renderedTexture);
+                    radar.renderedTexture = NULL;
+                }
+
+                if ((event.key.keysym.mod & KMOD_CTRL) != 0) {
+                    offset = 1.0f;
+                } else {
+                    offset = 10.0f;
+                }
+
+                if (mode)
+                switch (event.key.keysym.sym) {
+                    case SDLK_w:
+                        angle_x += offset;
+                        break;
+                    case SDLK_a:
+                        angle_y -= offset;
+                        break;
+                    case SDLK_s:
+                        angle_x -= offset;
+                        break;
+                    case SDLK_d:
+                        angle_y += offset;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
@@ -78,6 +114,9 @@ int main(void) {
         SDL_RenderClear(renderer);
 
         radar_draw(&radar);
+        if (mode) {
+            render_uv_mapped_sphere(&radar, angle_y, angle_x);
+        }
         radar_render(&radar);
 
         // Present render
@@ -88,6 +127,7 @@ int main(void) {
     }
 
     // Cleanup
+    radar_cleanup(&radar);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
