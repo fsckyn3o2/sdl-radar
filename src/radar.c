@@ -179,6 +179,7 @@ SDL_Rect radar_rectangle_centered(const Radar *radar, int x, int y) {
 }
 
 void radar_cleanup(Radar *radar) {
+    printf("Radar cleanup\n");
     free(radar->trail_history);
     SDL_DestroyTexture(radar->workingTexture);
     radar->workingTexture = NULL;

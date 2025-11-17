@@ -30,6 +30,10 @@ set(SOURCE_FILES
         src/radar.c
         src/radar_sphere.h
         src/radar_sphere.c
+        src/radar_audio.c
+        src/radar_audio.h
+        src/radar_object.c
+        src/radar_object.h
 )
 
 add_executable(radar ${SOURCE_FILES})

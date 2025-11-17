@@ -1,13 +1,14 @@
 #include <SDL2/SDL.h>
-#include <stdbool.h>
 #include "main_constants.h"
 #include "radar.h"
+#include "radar_audio.h"
 #include "radar_sphere.h"
+#include "radar_object.h"
+#include <stdatomic.h>
 
 int main(void) {
     SDL_Window* window = NULL;
     SDL_Renderer* renderer = NULL;
-    bool running = true;
 
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -16,7 +17,7 @@ int main(void) {
     }
 
     // Create a window
-    window = SDL_CreateWindow("RADAR",
+    window = SDL_CreateWindow("-- RADAR --",
                             SDL_WINDOWPOS_UNDEFINED,
                             SDL_WINDOWPOS_UNDEFINED,
                             WINDOW_WIDTH, WINDOW_HEIGHT,
@@ -38,6 +39,11 @@ int main(void) {
         return 1;
     }
 
+    // Initialize audio
+    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+        fprintf(stderr, "SDL could not initialize! SDL Error: %s\n", SDL_GetError());
+        return 1;
+    }
 
     Radar radar = {
         .renderer=renderer,
@@ -59,11 +65,31 @@ int main(void) {
         .max_trail_length = 40,
         .trail_larger = RADAR_RADIUS,
         .trailColor =  {106, 220, 153, 255},
-        .trail_history_index = 0
+        .trail_history_index = 0,
+        .audioData = {0}
     };
 
     radar_init(&radar);
     radar.destination = radar_rectangle_centered(&radar, CENTER_X, CENTER_Y);
+
+    // OBJECTS on the radar :
+    radar.radar_objects = radar_object_generate_random_list();
+
+    // AUDIO: Create the new thread (Name the thread, pass the function, pass the user data struct)
+    radar_audio_init(&radar);
+    if (radar.audioData.initialized == 0) {
+        printf("Error initialization");
+        return 1;
+    }
+
+    SDL_Thread* radarAudioThread = SDL_CreateThread(radar_audio_thread, "RadarAudioThread", &radar);
+
+    if (radarAudioThread == NULL) {
+        fprintf(stderr, "Failed to create thread: %s\n", SDL_GetError());
+        radar_cleanup(&radar);
+        SDL_Quit();
+        return 1;
+    }
 
     // Main loop
     float angle_y = 0.0f;
@@ -71,40 +97,47 @@ int main(void) {
     float offset = 10.0f;
     int mode = 0;
 
+    bool running = true;
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
+                atomic_store(&radar.audioData.audioThreadRunning, false);
                 running = false;
             } else if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_v || event.key.keysym.sym == SDLK_r) {
-                    mode = mode?0:1;
-                    SDL_DestroyTexture(radar.renderedTexture);
-                    radar.renderedTexture = NULL;
-                }
-
-                if ((event.key.keysym.mod & KMOD_CTRL) != 0) {
-                    offset = 1.0f;
-                } else {
-                    offset = 10.0f;
-                }
-
-                if (mode)
                 switch (event.key.keysym.sym) {
-                    case SDLK_w:
-                        angle_x += offset;
-                        break;
-                    case SDLK_a:
-                        angle_y -= offset;
-                        break;
-                    case SDLK_s:
-                        angle_x -= offset;
-                        break;
-                    case SDLK_d:
-                        angle_y += offset;
+                    case SDLK_v:
+                    case SDLK_r:
+                        mode = mode?0:1;
+                        SDL_DestroyTexture(radar.renderedTexture);
+                        radar.renderedTexture = NULL;
                         break;
                     default:
                         break;
+                }
+
+                if (mode) {
+                    if ((event.key.keysym.mod & KMOD_CTRL) != 0) {
+                        offset = 1.0f;
+                    } else {
+                        offset = 10.0f;
+                    }
+                    switch (event.key.keysym.sym) {
+                        case SDLK_w:
+                            angle_x += offset;
+                            break;
+                        case SDLK_a:
+                            angle_y -= offset;
+                            break;
+                        case SDLK_s:
+                            angle_x -= offset;
+                            break;
+                        case SDLK_d:
+                            angle_y += offset;
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
         }
@@ -119,6 +152,9 @@ int main(void) {
         }
         radar_render(&radar);
 
+        radar_object_list_anim_update(&radar);
+        radar_object_list_anim_render(&radar);
+
         // Present render
         SDL_RenderPresent(renderer);
 
@@ -127,6 +163,8 @@ int main(void) {
     }
 
     // Cleanup
+    SDL_WaitThread(radarAudioThread, NULL);
+    radar_audio_cleanup(&radar);
     radar_cleanup(&radar);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

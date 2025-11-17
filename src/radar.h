@@ -1,11 +1,93 @@
 #ifndef RADAR_H
 #define RADAR_H
 #include <SDL2/SDL.h>
+#include <stdbool.h>
 
-// Structure simple pour stocker les points de la traînée
+typedef struct {
+    double frequency;
+    double duration_ms;
+    int samples_left;
+    double phase;
+    SDL_bool playing;
+} RadarAudioUserData;
+
+typedef struct {
+    RadarAudioUserData userData;
+    int initialized;
+    SDL_AudioSpec desiredSpec;
+    SDL_AudioSpec actualSpec;
+    SDL_AudioDeviceID deviceId;
+    SDL_mutex *audioMutex;
+    int audioThreadId;
+    _Atomic(int) audioThreadRunning;
+} RadarAudioData;
+
 typedef struct {
     int x, y;
 } RadarTrailPoint;
+
+/**
+* DEFAULT: Generic enemy
+* DRONE: Small, fast enemy drone
+* TANK: Heavy, slow-moving enemy vehicle
+* BOMBER: Enemy that drops bombs or mines
+* SNIPER: Enemy with long-range attack
+* ARTILLERY: Long-range artillery unit
+* ARMORED: Enemies with heavy armor
+* BOSSES: Major enemies or bosses
+*/
+enum RadarEnemyType {
+    ENEMY_DEFAULT = -1,
+    ENEMY_DRONE = -2,
+    ENEMY_TANK = -3,
+    ENEMY_BOMBER = -4,
+    ENEMY_SNIPER = -5,
+    ENEMY_ARTILLERY = -6,
+    ENEMY_ARMORED = -7,
+    ENEMY_BOSSES = -8
+};
+
+/**
+* DEFAULT: Generic ally
+* SCOUT: Fast-moving ally for reconnaissance
+* MEDIC: Provides healing or support
+* TANKER: Heavy armor, protecting others
+* SNIPER_SUPPORT: Long-range support ally
+* TECHNICIAN: Repair or hacking units
+* DRONE: Support drone or flying ally
+* COMMANDER: Leader of allies
+ */
+enum RadarAllyType {
+    ALLY_DEFAULT = 1,
+    ALLY_SCOUT = 2,
+    ALLY_MEDIC = 3,
+    ALLY_TANKER = 4,
+    ALLY_SNIPER_SUPPORT = 5,
+    ALLY_TECHNICIAN = 6,
+    ALLY_DRONE = 7,
+    ALLY_COMMANDER = 8
+};
+
+enum RadarObjectStatus {
+    RADAR_OBJECT_STATUS_DEAD = -1,
+    RADAR_OBJECT_STATUS_ALIVE = 0,
+    RADAR_OBJECT_STATUS_IS_DYING = 1
+};
+
+typedef struct {
+    int x, y;
+    int radius;
+    int radius_memory;
+    double directionAngle;
+    double speed;
+    int type;
+    int status;
+} RadarObject;
+
+typedef struct RadarObjectLinkedList {
+    struct RadarObjectLinkedList* next;
+    RadarObject object;
+} RadarObjectLinkedList;
 
 typedef struct {
     SDL_Color color;
@@ -38,6 +120,8 @@ typedef struct {
     int trail_larger;
     int max_trail_length;
     RadarTrailPoint **trail_history;
+    RadarAudioData audioData;
+    RadarObjectLinkedList *radar_objects;
 } Radar;
 
 void radar_init(Radar *radar);
