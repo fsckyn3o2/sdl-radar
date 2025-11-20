@@ -2,11 +2,18 @@
 #define RADAR_H
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#define ASSET_TEXTURE_BLUR "asserts/blur.png"
 
 typedef struct {
     double frequency;
     double duration_ms;
+    double silence_ms;
     int samples_left;
+    int silence_left;
+    int ping_length_samples;
+    int reverb_buffer_pos;
+    int reverb_buffer_size;
+    Sint16* reverb_buffer;
     double phase;
     SDL_bool playing;
 } RadarAudioUserData;
@@ -74,6 +81,12 @@ enum RadarObjectStatus {
     RADAR_OBJECT_STATUS_IS_DYING = 1
 };
 
+/**
+ * Each object has the same origin which is the center of the radar.
+ * Origin is:
+ *   (depends on where the object is rendered (radar->destination.x)) + radar->padding + radar->radius
+ *   (depends on where the object is rendered (radar->destination.y)) + radar->padding + radar->radius
+ */
 typedef struct {
     int x, y;
     int radius;
@@ -126,6 +139,7 @@ typedef struct {
 
 void radar_init(Radar *radar);
 void radar_render(Radar *radar);
+void radar_initWorkingTexture(Radar *radar);
 void radar_draw(Radar *radar);
 void radar_draw_middle_point(Radar *radar);
 void radar_draw_sweep_line(Radar *radar);

@@ -31,7 +31,11 @@ void radar_object_list_anim_update(Radar *radar) {
         switch (objectLst->object.status) {
             case RADAR_OBJECT_STATUS_DEAD:
                 if (prevObj == NULL) {
-                    radar->radar_objects = objectLst->next;
+                    if (objectLst->next == NULL) {
+                        radar->radar_objects = NULL;
+                    } else {
+                        radar->radar_objects = objectLst->next;
+                    }
                     free(objectLst);
                     objectLst = radar->radar_objects;
                 } else {
@@ -52,11 +56,18 @@ void radar_object_list_anim_update(Radar *radar) {
 }
 
 void radar_object_anim_update(const Radar *radar, RadarObject *radarObject) {
-    radarObject->x += (int) radarObject->speed * cos(radarObject->directionAngle);
-    radarObject->y += (int) radarObject->speed * sin(radarObject->directionAngle);
-    if (radarObject->x > radar->destination.w || radarObject->x < 0 || radarObject->y > radar->destination.h || radarObject->y < 0) {
+    double offsetX = radarObject->speed * cos(radarObject->directionAngle);
+    double offsetY = radarObject->speed * sin(radarObject->directionAngle);
+    radarObject->x += offsetX>-1 && offsetX<0 ? -1 : offsetX>0 && offsetX<-1 ? 1 : offsetX;
+    radarObject->y += offsetY>-1 && offsetY<0 ? -1 : offsetY>0 && offsetY<-1 ? 1 : offsetY;
+
+    if (!radar_object_isIn(radar, radarObject)) {
         radarObject->status = RADAR_OBJECT_STATUS_DEAD;
     }
+}
+
+bool radar_object_isIn(Radar *radar, RadarObject *object) {
+    return sqrt(pow(object->x,2) + pow(object->y,2)) < radar->radius;
 }
 
 void radar_object_anim_destroy(RadarObject *radarObject) {
@@ -73,16 +84,20 @@ void radar_object_anim_destroy(RadarObject *radarObject) {
 }
 
 void radar_object_list_anim_render(const Radar *radar) {
+    if (radar->radar_objects==NULL) return;
+
     RadarObjectLinkedList *objectLst = radar->radar_objects;
+    SDL_SetRenderTarget(radar->renderer, radar->workingTexture);
     do{
-        radar_object_anim_render(radar->renderer, &objectLst->object);
+        radar_object_anim_render(radar, &objectLst->object);
     }while((objectLst = objectLst->next) != NULL);
 }
 
-void radar_object_anim_render(SDL_Renderer *renderer, RadarObject *radarObject) {
-    if (!radarObject || radarObject->status != RADAR_OBJECT_STATUS_ALIVE)
+void radar_object_anim_render(const Radar *radar, RadarObject *radarObject) {
+    if (radarObject == NULL || radarObject->status != RADAR_OBJECT_STATUS_ALIVE)
         return;
 
+    SDL_Renderer* renderer = radar->renderer;
     // Determine color based on an object type
     SDL_Color color;
     if (radarObject->type < 0) { // Negative types are enemies
@@ -112,21 +127,19 @@ void radar_object_anim_render(SDL_Renderer *renderer, RadarObject *radarObject) 
     }
 
     // Draw a blur effect: multiple circles with decreasing alpha
-    int num_layers = 5;
-    double max_radius = 10.0; // or set based on object size
-
-    for (int i = 0; i < num_layers; ++i) {
-        double radius = max_radius * (1.0 + i * 0.5); // increasing radius
-        SDL_Color layerColor = color;
-        layerColor.a = (Uint8)(color.a * (1.0 - (double)i / num_layers)); // decreasing alpha
-        aacircleRGBA(renderer,  radarObject->x, radarObject->y, radius, layerColor.r, layerColor.g, layerColor.b, layerColor.a);
+    int layers_r = radarObject->radius/3;
+    for (int i = 0; i <= radarObject->radius; i+=layers_r) {
+        if (radarObject->radius-i >= radarObject->radius-layers_r) {
+            filledCircleRGBA(renderer,  radarObject->x + radar->radius+radar->padding, radarObject->y + radar->radius+radar->padding, i, color.r, color.g, color.b, 255);
+        }
+        filledCircleRGBA(renderer,  radarObject->x + radar->radius+radar->padding, radarObject->y + radar->radius+radar->padding, i, color.r, color.g, color.b, color.a/3);
     }
 
     SDL_Color clearColor = {0, 0, 0, 0};
     SDL_SetRenderDrawColor(renderer, clearColor.r, clearColor.g, clearColor.b, clearColor.a);
 }
 
-RadarObjectLinkedList* radar_object_generate_random_list() {
+RadarObjectLinkedList* radar_object_generate_random_list(Radar *radar) {
     const int NUM_OBJECTS = 10; // Adjust as needed
     RadarObjectLinkedList *head = malloc(sizeof(RadarObjectLinkedList));
     head->next = NULL;
@@ -137,12 +150,12 @@ RadarObjectLinkedList* radar_object_generate_random_list() {
     for (int i = 0; i < NUM_OBJECTS; ++i) {
         // Allocate a new RadarObject
         new_node->object = (RadarObject) {
-            .x = rand() % 800,
-            .y = rand() % 600,
-            .radius = 2 + rand() % 8, // radius between 2 and 10
+            .x = rand() % radar->radius/2,
+            .y = rand() % radar->radius/2,
+            .radius = 16 + rand() % 8, // radius between 2 and 10
             .radius_memory = 0,
             .directionAngle = ((double)rand() / RAND_MAX) * 2 * M_PI,
-            .speed = 0.5 + ((double)rand() / RAND_MAX) * 1.5,
+            .speed = ((double) (rand()%(radar->radius/100))) * ((rand() % 2) * 2 - 1),
             .status = (rand() % 3) - 1, // -1, 0, or 1
             .type = -1
         };

@@ -2,8 +2,13 @@
 #define RADAR_AUDIO_H
 #include "radar.h"
 
-#define SAMPLE_RATE 22050
-#define AMPLITUDE 30000
+#define SAMPLE_RATE 44100
+#define AMPLITUDE 10000
+#define PING_DURATION_MS 250
+#define REVERB_DELAY_MS 120
+#define DECAY_FACTOR 0.5f // How much each echo fades
+#define PING_FREQ_START 1300.0
+#define PING_FREQ_END 1800.0
 
 void radar_audio_callback(void* userdata, Uint8* stream, int len);
 void radar_audio_play(Radar *radar);

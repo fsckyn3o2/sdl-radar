@@ -73,7 +73,7 @@ int main(void) {
     radar.destination = radar_rectangle_centered(&radar, CENTER_X, CENTER_Y);
 
     // OBJECTS on the radar :
-    radar.radar_objects = radar_object_generate_random_list();
+    radar.radar_objects = radar_object_generate_random_list(&radar);
 
     // AUDIO: Create the new thread (Name the thread, pass the function, pass the user data struct)
     radar_audio_init(&radar);
@@ -82,14 +82,15 @@ int main(void) {
         return 1;
     }
 
-    SDL_Thread* radarAudioThread = SDL_CreateThread(radar_audio_thread, "RadarAudioThread", &radar);
-
-    if (radarAudioThread == NULL) {
-        fprintf(stderr, "Failed to create thread: %s\n", SDL_GetError());
-        radar_cleanup(&radar);
-        SDL_Quit();
-        return 1;
-    }
+    // No Audio Thread
+    // SDL_Thread* radarAudioThread = SDL_CreateThread(radar_audio_thread, "RadarAudioThread", &radar);
+    //
+    // if (radarAudioThread == NULL) {
+    //     fprintf(stderr, "Failed to create thread: %s\n", SDL_GetError());
+    //     radar_cleanup(&radar);
+    //     SDL_Quit();
+    //     return 1;
+    // }
 
     // Main loop
     float angle_y = 0.0f;
@@ -145,15 +146,18 @@ int main(void) {
         // Clear screen
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+        radar_initWorkingTexture(&radar);
+
+        radar_object_list_anim_update(&radar);
+        radar_object_list_anim_render(&radar);
 
         radar_draw(&radar);
         if (mode) {
             render_uv_mapped_sphere(&radar, angle_y, angle_x);
         }
         radar_render(&radar);
+        radar_audio_trigger(&radar);
 
-        radar_object_list_anim_update(&radar);
-        radar_object_list_anim_render(&radar);
 
         // Present render
         SDL_RenderPresent(renderer);
@@ -163,7 +167,8 @@ int main(void) {
     }
 
     // Cleanup
-    SDL_WaitThread(radarAudioThread, NULL);
+    // No Audio Thread
+    // SDL_WaitThread(radarAudioThread, NULL);
     radar_audio_cleanup(&radar);
     radar_cleanup(&radar);
     SDL_DestroyRenderer(renderer);

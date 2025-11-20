@@ -26,8 +26,7 @@ void radar_render(Radar *radar) {
     }
 }
 
-void radar_draw(Radar *radar) {
-
+void radar_initWorkingTexture(Radar *radar) {
     if (radar->workingTexture == NULL) {
         radar->workingTexture = SDL_CreateTexture(
             radar->renderer,
@@ -38,6 +37,9 @@ void radar_draw(Radar *radar) {
 
     SDL_SetRenderTarget(radar->renderer, radar->workingTexture);
     SDL_RenderClear(radar->renderer);
+}
+
+void radar_draw(Radar *radar) {
 
     if (radar->with_grid) {
         radar_draw_bkg_grid(radar);
